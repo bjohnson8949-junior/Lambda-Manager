@@ -4,10 +4,10 @@ A CLI tool to create and manage Lambda Labs GPU instances programmatically.
 
 ## Features
 
-- **Create instances** - Launch GPU instances with cheapest selection enabled
+- **Create instances** - Launch GPU instances with automatic cheapest selection
 - **Delete instances** - Terminate instances by ID
-- **List instances** - View all active instances
-- **Find cheapest** - Show the most affordable GPU instance type
+- **List instances** - View all active instances with uptime and cost tracking
+- **Show instance types** - Browse available and unavailable GPU instance types
 - **Restart instances** - Restart running instances
 
 ## Lambda Cloud API Endpoint
@@ -46,11 +46,11 @@ This will automatically find the cheapest available GPU instance type with capac
 - **B200**: Starting from $5.00/hour
 *Prices vary by region and availability*
 
-### Create with Specific Instance Type
+### Create with Type Filter
 ```bash
-# Create with a specific instance type from available types
+# Filter to specific instance types
 python lambda_manager.py create \
-  --type-filter "a100_sxm4" \
+  --type-filter "a100,h100" \
   --region us-east-1 \
   --key my_ssh_key \
   --count 1
@@ -59,7 +59,7 @@ python lambda_manager.py create \
 ### Create with Custom Name
 ```bash
 python lambda_manager.py create \
-  --type-filter "h100_sxm5" \
+  --type-filter "h100" \
   --name "my-gpu-instance" \
   --key my_ssh_key
 ```
@@ -70,7 +70,7 @@ python lambda_manager.py create \
 python lambda_manager.py create --wait
 
 # Launch with type filter and wait
-python lambda_manager.py create --type-filter "a100_sxm4,h100_sxm5" --wait
+python lambda_manager.py create --type-filter "a100,h100" --wait
 ```
 
 The `--wait` flag will poll the instance IP every 10 seconds until it responds to ping (max 20 minutes).
@@ -108,35 +108,12 @@ Output shows for each instance:
 - **Cost** for this instance (price × runtime, e.g., "$7.31")
 
 At the end of the list, you'll see summary information:
-- **Total hourly cost** for all instances combined (e.g., "${total_price:.2f}/hr across N instances")
-- **Total running cost** accumulated across all instances (e.g., "${total_cost:.2f} across {total_runtime:.2f} hours")
+- **Total hourly cost** for all instances combined
+- **Total running cost** accumulated across all instances
 
 **Note:** Uptime is fetched via SSH using the `uptime -p` command. This requires SSH key access configured with the Lambda instance. The Lambda API doesn't natively expose instance runtime, so SSH is used to get this information and calculate total running costs.
 
-### Show Cheapest Available Instance
-```bash
-# Display formatted output
-python lambda_manager.py cheapest-available
-
-# Filter by partial type name (e.g., "h100" will match gpu_1x_h100_sxm5, gpu_2x_h100_sxm5, etc.)
-python lambda_manager.py cheapest-available --type h100
-python lambda_manager.py cheapest-available --type a100
-
-# Filter by multiple partial types
-python lambda_manager.py cheapest-available --type-filter "a100,h100"
-
-# Get JSON output for programmatic use
-python lambda_manager.py cheapest-available --output json
-```
-
-Shows the cheapest GPU instance type that has capacity available, with price per hour.
-
-Type filtering supports:
-- Full instance type names: `--type gpu_1x_h100_sxm5`
-- Partial matches: `--type h100` (matches any instance with "h100" in the name)
-- Multiple filters with `--type-filter "a100,h100"`
-
-### Show Available Machine Types
+### Show Available Instance Types
 ```bash
 # Display formatted output
 python lambda_manager.py instances
@@ -146,13 +123,8 @@ python lambda_manager.py instances --output json
 ```
 
 Output shows all instance types separated by:
-- Available types (with capacity) - includes price per hour
+- Available types (with capacity) — includes price per hour
 - Unavailable types (no current capacity)
-
-The type filtering for instance types supports both full names and partial matches:
-- Full type name: `--type gpu_1x_h100_sxm5`
-- Partial match: `--type h100` (matches any instance with "h100" in the name)
-- Multiple filters: `--type-filter "a100,h100"`
 
 ### Restart an Instance
 ```bash
@@ -162,29 +134,21 @@ python lambda_manager.py restart instance-id-12345
 # Get JSON output
 python lambda_manager.py restart instance-id-12345 --output json
 ```
-Note: This restarts the instance, effectively starting it if it's stopped.
 
 ### Launch Multiple Instances
 ```bash
 # Launch 3 instances with different keys
 python lambda_manager.py create \
-  --type a100_80gb \
+  --type-filter "a100" \
   --count 3 \
   --key my_key_1 \
   --key my_key_2
 ```
 
-### Use Type Filter (Specific Instance Types Only)
-```bash
-# Only choose from specific instance types
-python lambda_manager.py create --type-filter "a100,h100"
-```
-The tool will automatically find an available region for the selected instance types.
-
-### Select Specific Region and Type
+### Select Specific Region
 ```bash
 python lambda_manager.py create \
-  --type a100_80gb \
+  --type-filter "a100" \
   --region us-east-1 \
   --key my_ssh_key
 ```
@@ -207,13 +171,10 @@ ssh -o StrictHostKeyChecking=no ubuntu@<instance-ip>
 python lambda_manager.py create --output json
 python lambda_manager.py list --output json
 python lambda_manager.py instances --output json
-python lambda_manager.py cheapest-available --output json
 python lambda_manager.py restart instance-id --output json
 ```
 
 ## Environment Variables
-
-These environment variables can be used instead of command-line flags:
 
 | Variable | Description |
 |----------|-------------|
